@@ -19,6 +19,6 @@ t_node_t *get_h(h_list *lst, int pos);
 
 t_node_t *pop(h_list *lst);
 
-void sort(h_list *lst);
+void insert_h(h_list *lst, int pos, t_node_t *elem);
 
 #endif

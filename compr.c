@@ -43,7 +43,7 @@ ht *countCharacters(char *filepath)
             int val = ht_get(table, key);
             if (val == -1)
             {
-                if (ht_set(table, key, 0) == NULL)
+                if (ht_set(table, key, 1) == NULL)
                 {
                     perror("Error message");
                     exit(-errno);
@@ -92,19 +92,41 @@ h_list *createHuffList(ht *table)
     return list;
 }
 
+t_node_t *buildHuffmanTree(h_list *lst)
+{
+    while (list_len(lst) > 1)
+    {
+        t_node_t *node1 = pop(lst);
+        t_node_t *node2 = pop(lst);
+        t_node_t *newNode = fuse_t_node(node1, node2);
+
+        if (list_len(lst) == 0)
+        {
+            add_h(lst, newNode);
+            break;
+        }
+
+        int i = 0;
+        t_node_t *curr = get_h(lst, i);
+        while (curr->cnt < newNode->cnt && list_len(lst) > i)
+        {
+            curr = get_h(lst, i);
+            i++;
+        }
+        insert_h(lst, i, newNode);
+    }
+
+    return get_h(lst, 0);
+}
+
 bool huffmanEncode(char filepath[])
 {
     ht *table = countCharacters(filepath);
+    printf("count: %d\n", ht_length(table));
 
     h_list *huffList = createHuffList(table);
 
-    for (int i = 0; i < ht_length(table); i++)
-    {
-        t_node_t *n = get_h(huffList, i);
-        printf("%d: %d | ", n->letter, n->cnt);
-    }
-
-    printf("\n");
+    t_node_t *root = buildHuffmanTree(huffList);
 
     ht_destroy(table);
 }

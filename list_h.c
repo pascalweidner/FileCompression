@@ -84,13 +84,15 @@ void delete_h(h_list *lst, int pos)
     if (pos == 0)
     {
         node *temp = lst->head;
-        lst->head = temp->next;
+        lst->head = lst->head->next;
         free(temp);
 
         if (lst->head == NULL)
         {
             lst->last = NULL;
         }
+        lst->size--;
+        return;
     }
 
     node *curr = lst->head;
@@ -101,6 +103,7 @@ void delete_h(h_list *lst, int pos)
 
     node *temp = curr;
 
+    lst->size--;
     curr->next = temp->next;
     free(temp);
 }
@@ -114,7 +117,7 @@ t_node_t *get_h(h_list *lst, int pos)
 {
     if (pos >= lst->size)
     {
-        printf("Error: Index out of range");
+        printf("Error: Index out of range1");
         exit(-1);
     }
 
@@ -127,14 +130,37 @@ t_node_t *get_h(h_list *lst, int pos)
     return curr->elem;
 }
 
-void sort(h_list *lst)
-{
-    // TODO implement
-}
-
 t_node_t *pop(h_list *lst)
 {
     t_node_t *elem = get_h(lst, 0);
     delete_h(lst, 0);
     return elem;
+}
+
+void insert_h(h_list *lst, int pos, t_node_t *elem)
+{
+
+    if (pos > lst->size)
+    {
+        printf("Error: Index out of range");
+        exit(-1);
+    }
+    if (pos == lst->size)
+    {
+        add_h(lst, elem);
+        return;
+    }
+
+    node *new = (node *)malloc(sizeof(node));
+    new->elem = elem;
+
+    node *curr = lst->head;
+    for (int i = 0; i < pos - 1; i++)
+    {
+        curr = curr->next;
+    }
+
+    new->next = curr->next;
+    curr->next = new;
+    lst->size++;
 }

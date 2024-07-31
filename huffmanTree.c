@@ -10,8 +10,8 @@ t_node_t *fuse_t_node(t_node_t *left, t_node_t *right)
     t_node_t *new_node = (t_node_t *)malloc(sizeof(t_node_t));
     new_node->left = left;
     new_node->right = right;
-    int cnt = left->cnt + right->cnt;
     new_node->letter = -1;
+    new_node->cnt = left->cnt + right->cnt;
 }
 
 int compare_nodes(const void *a, const void *b)
