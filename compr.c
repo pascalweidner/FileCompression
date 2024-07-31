@@ -5,6 +5,8 @@
 #include <errno.h>
 
 #include "hashTable.h"
+#include "huffmanTree.h"
+#include "list_h.h"
 
 bool checkIfTxt(char *filepath)
 {
@@ -63,10 +65,47 @@ ht *countCharacters(char *filepath)
     return table;
 }
 
+h_list *createHuffList(ht *table)
+{
+    t_node_t **array = malloc(ht_length(table) * sizeof(t_node_t *));
+
+    hti it = ht_iterator(table);
+
+    int i = 0;
+
+    while (ht_next(&it) != false)
+    {
+        t_node_t *new = create_t_node(it.key[0], it.value);
+        array[i] = new;
+        i++;
+    }
+
+    qsort(array, ht_length(table), sizeof(t_node_t *), compare_nodes);
+
+    h_list *list = createHList();
+    for (int i = 0; i < ht_length(table); i++)
+    {
+        t_node_t *n = array[i];
+        add_h(list, n);
+    }
+
+    return list;
+}
+
 bool huffmanEncode(char filepath[])
 {
     ht *table = countCharacters(filepath);
-    printf("%d \n", (int)ht_length(table));
+
+    h_list *huffList = createHuffList(table);
+
+    for (int i = 0; i < ht_length(table); i++)
+    {
+        t_node_t *n = get_h(huffList, i);
+        printf("%d: %d | ", n->letter, n->cnt);
+    }
+
+    printf("\n");
+
     ht_destroy(table);
 }
 

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include "huffmanTree.h"
 
@@ -30,6 +31,12 @@ void destroyNode(node *nd);
 
 void destroyHList(h_list *lst)
 {
+    if (lst == NULL)
+    {
+        perror("Error message");
+        exit(-errno);
+    }
+
     if (lst->head != NULL)
     {
         destroyNode(lst->head);
@@ -43,6 +50,7 @@ void destroyNode(node *nd)
     {
         destroyNode(nd->next);
     }
+    free(nd->elem);
     free(nd);
 }
 
@@ -66,7 +74,6 @@ void add_h(h_list *lst, t_node_t *elem)
 
 void delete_h(h_list *lst, int pos)
 {
-    int cache;
 
     if (pos >= lst->size)
     {
@@ -84,7 +91,6 @@ void delete_h(h_list *lst, int pos)
         {
             lst->last = NULL;
         }
-        return cache;
     }
 
     node *curr = lst->head;
@@ -97,6 +103,11 @@ void delete_h(h_list *lst, int pos)
 
     curr->next = temp->next;
     free(temp);
+}
+
+size_t list_len(h_list *lst)
+{
+    return lst->size;
 }
 
 t_node_t *get_h(h_list *lst, int pos)
@@ -126,15 +137,4 @@ t_node_t *pop(h_list *lst)
     t_node_t *elem = get_h(lst, 0);
     delete_h(lst, 0);
     return elem;
-}
-
-void printList(h_list *lst)
-{
-    node *elem = lst->head;
-    while (elem != NULL)
-    {
-        printf("%d ", elem->elem);
-        elem = elem->next;
-    }
-    printf("\n");
 }

@@ -2,7 +2,16 @@
 #define HUFFMANTREE_H_
 
 typedef struct t_node t_node_t;
+struct t_node
+{
+    t_node_t *left;
+    t_node_t *right;
+    int cnt;
+    char letter;
+};
 
-t_node_t *create_node(t_node_t *left, t_node_t *right);
+int compare_nodes(const void *a, const void *b);
+t_node_t *fuse_t_node(t_node_t *left, t_node_t *right);
+t_node_t *create_t_node(char let, int cnt);
 
 #endif
