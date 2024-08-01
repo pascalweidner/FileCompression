@@ -17,13 +17,13 @@ void ht_destroy(ht *table);
 
 // Get item with given key (NUL-terminated) from hash table. Return
 // value (which was set with ht_set), or NULL if key not found.
-int ht_get(ht *table, const char *key);
+void *ht_get(ht *table, const char *key);
 
 // Set item with given key (NUL-terminated) to value (which must not
 // be NULL). If not already present in table, key is copied to newly
 // allocated memory (keys are freed automatically when ht_destroy is
 // called). Return address of copied key, or NULL if out of memory.
-const char *ht_set(ht *table, const char *key, int value);
+const char *ht_set(ht *table, const char *key, void *value);
 
 // Return number of items in hash table.
 size_t ht_length(ht *table);
@@ -32,7 +32,7 @@ size_t ht_length(ht *table);
 typedef struct
 {
     const char *key; // current key
-    int value;       // current value
+    void *value;     // current value
 
     // Don't use these fields directly.
     ht *_table;    // reference to hash table being iterated

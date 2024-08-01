@@ -12,7 +12,7 @@ typedef struct ht ht;
 typedef struct
 {
     const char *key; // key is NULL if this slot is empty
-    int value;
+    void *value;
 } ht_entry;
 
 // Hash table structure: create with ht_create, free with ht_destroy.
@@ -52,6 +52,7 @@ void ht_destroy(ht *table)
     for (size_t i = 0; i < table->capacity; i++)
     {
         free((void *)table->entries[i].key);
+        free((void *)table->entries[i].value);
     }
 
     // Then free entries array and table itself.
@@ -75,7 +76,7 @@ static uint64_t hash_key(const char *key)
     return hash;
 }
 
-int ht_get(ht *table, const char *key)
+void *ht_get(ht *table, const char *key)
 {
     // AND hash with capacity-1 to ensure it's within entries array.
     uint64_t hash = hash_key(key);
@@ -97,12 +98,12 @@ int ht_get(ht *table, const char *key)
             index = 0;
         }
     }
-    return -1;
+    return NULL;
 }
 
 // Internal function to set an entry (without expanding table).
 static const char *ht_set_entry(ht_entry *entries, size_t capacity,
-                                const char *key, int value, size_t *plength)
+                                const char *key, void *value, size_t *plength)
 {
     // AND hash with capacity-1 to ensure it's within entries array.
     uint64_t hash = hash_key(key);
@@ -175,7 +176,7 @@ static bool ht_expand(ht *table)
     return true;
 }
 
-const char *ht_set(ht *table, const char *key, int value)
+const char *ht_set(ht *table, const char *key, void *value)
 {
     // If length will exceed half of current capacity, expand it.
     if (table->length >= table->capacity / 2)

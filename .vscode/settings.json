@@ -2,6 +2,8 @@
     "files.associations": {
         "stdio.h": "c",
         "stdlib.h": "c",
-        "huffmantree.h": "c"
+        "huffmantree.h": "c",
+        "hashtable.h": "c",
+        "string.h": "c"
     }
 }

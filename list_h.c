@@ -50,7 +50,6 @@ void destroyNode(node *nd)
     {
         destroyNode(nd->next);
     }
-    free(nd->elem);
     free(nd);
 }
 
