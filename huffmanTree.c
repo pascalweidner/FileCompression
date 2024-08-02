@@ -133,3 +133,39 @@ uint8_t printHuffTree(t_node_t *root, FILE *fptr)
 
     return 8 - bufbits;
 }
+
+t_node_t *travRead(FILE *fptr, uint8_t *buffer, int *bufbits)
+{
+    // if buffer is empty fill it up with a new byte from the file
+    if (*bufbits <= 8)
+    {
+        fread((buffer + 1), sizeof(uint8_t), 1, fptr);
+        *bufbits += 8;
+    }
+
+    // get last bit of byte
+    uint8_t bit_to_read = *buffer >> 15;
+    if (bit_to_read == 1)
+    {
+        char let = (*buffer >> 7) & 0XFF;
+        *buffer <<= (*bufbits - 8);
+        fread((buffer + 1), sizeof(uint8_t), 1, fptr);
+        *buffer <<= 8 - (*bufbits - 9);
+
+        // remove the one node bit from the count
+        *bufbits -= 1;
+        return create_t_node(let, 0);
+    }
+    *buffer <<= 1;
+    *bufbits -= 1;
+    t_node_t *leftChild = travRead(fptr, buffer, bufbits);
+    t_node_t *rightChild = travRead(fptr, buffer, bufbits);
+    return fuse_t_node(leftChild, rightChild);
+}
+
+t_node_t *readHuffTree(FILE *fptr)
+{
+    uint16_t buffer;
+    fread(&buffer, sizeof(uint16_t), 1, fptr);
+    int bufbits = 16;
+}

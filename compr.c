@@ -188,11 +188,15 @@ void compressFile(ht *encTable, char filepath[], t_node_t *root)
     // padding
     uint8_t paddingCompr = (uint8_t)(8 - bufbits);
 
+    printf("len1: %d\n", paddingTree);
+    printf("len2: %d \n", paddingCompr);
+
     // write padding to file
     uint8_t padding = 0b00000000;
-    padding &= paddingTree;
+    padding |= paddingTree;
     padding <<= 4;
-    padding &= paddingCompr;
+    padding |= paddingCompr;
+
     fseek(fptr2, 0, SEEK_SET);
     fwrite(&padding, sizeof(uint8_t), 1, fptr2);
 
@@ -219,9 +223,29 @@ bool huffmanEncode(char filepath[])
     ht_destroy(encTable);
 }
 
+bool huffmanDecode(char filepath[])
+{
+    FILE *fptr = fopen(filepath, "rb");
+    if (fptr == NULL)
+    {
+        perror("Error message");
+        exit(-errno);
+    }
+
+    uint8_t padding;
+    fread(&padding, sizeof(uint8_t), 1, fptr);
+
+    // get the different paddings from the padding byte
+    uint8_t paddingTree = padding >> 4;
+    uint8_t paddingCompr = padding & 0xF;
+
+    t_node_t *root = readHuffTree(fptr);
+}
+
 int main()
 {
-    huffmanEncode("/mnt/d/Development/Languages/C/FileCompression/files/test.txt");
+    // huffmanEncode("/mnt/d/Development/Languages/C/FileCompression/files/test.txt");
+    huffmanDecode("/mnt/d/Development/Languages/C/FileCompression/files/testHE.txt");
 
     return 0;
 }
