@@ -122,7 +122,7 @@ t_node_t *buildHuffmanTree(h_list *lst)
     return get_h(lst, 0);
 }
 
-void encodeFile(ht *encTable, char filepath[])
+void compressFile(ht *encTable, char filepath[], t_node_t *root)
 {
     char *end = strrchr(filepath, '.');
     char *fileNew = (char *)malloc((strlen(filepath) + 2) * sizeof(char));
@@ -141,8 +141,16 @@ void encodeFile(ht *encTable, char filepath[])
     FILE *fptr2;
     fptr2 = fopen(fileNew, "wb");
 
+    // write first byte only zeros to make a placehol for the padding
+    uint8_t puffer = 0b00000000;
+    fwrite(&puffer, sizeof(uint8_t), 1, fptr2);
+
+    // write the huffman Tree
+    uint8_t paddingTree = printHuffTree(root, fptr2);
+
+    // encode the file data with the huffmann Table
     char buffer[100];
-    char buffer2 = 0;
+    uint8_t buffer2 = 0;
     int bufbits = 0;
     while (fgets(buffer, 100, fptr1))
     {
@@ -170,8 +178,23 @@ void encodeFile(ht *encTable, char filepath[])
         }
     }
 
-    printf("len: %d \n", bufbits);
-    printf("buffer: %d \n", buffer2);
+    // fill the buffer to a full byte, so everything is saved
+    if (bufbits != 0)
+    {
+        buffer2 <<= (8 - bufbits);
+        fwrite(&buffer, sizeof(uint8_t), 1, fptr2);
+    }
+
+    // padding
+    uint8_t paddingCompr = (uint8_t)(8 - bufbits);
+
+    // write padding to file
+    uint8_t padding = 0b00000000;
+    padding &= paddingTree;
+    padding <<= 4;
+    padding &= paddingCompr;
+    fseek(fptr2, 0, SEEK_SET);
+    fwrite(&padding, sizeof(uint8_t), 1, fptr2);
 
     fclose(fptr1);
     fclose(fptr2);
@@ -188,10 +211,10 @@ bool huffmanEncode(char filepath[])
     t_node_t *root = buildHuffmanTree(huffList);
     destroyHList(huffList);
 
-    ht *encTable = iterate_tree(root);
+    ht *encTable = createHuffTable(root);
     printf("%d\n", (int)ht_length(encTable));
 
-    encodeFile(encTable, filepath);
+    compressFile(encTable, filepath, root);
 
     ht_destroy(encTable);
 }
