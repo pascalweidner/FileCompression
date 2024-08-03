@@ -134,7 +134,7 @@ uint8_t printHuffTree(t_node_t *root, FILE *fptr)
     return 8 - bufbits;
 }
 
-t_node_t *travRead(FILE *fptr, uint8_t *buffer, int *bufbits)
+t_node_t *travRead(FILE *fptr, uint16_t *buffer, int *bufbits)
 {
     // if buffer is empty fill it up with a new byte from the file
     if (*bufbits <= 8)
@@ -168,4 +168,6 @@ t_node_t *readHuffTree(FILE *fptr)
     uint16_t buffer;
     fread(&buffer, sizeof(uint16_t), 1, fptr);
     int bufbits = 16;
+
+    return travRead(fptr, &buffer, &bufbits);
 }
