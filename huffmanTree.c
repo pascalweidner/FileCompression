@@ -101,9 +101,6 @@ void travPrint(t_node_t *node, FILE *fptr, uint16_t *buffer, int *bufbits)
     while (*bufbits >= 8)
     {
         uint8_t byte_to_write = (*buffer >> (*bufbits - 8)) & 0xFF;
-        printf("buffer: %d\n", *buffer);
-        printf("bufbits: %d\n", *bufbits);
-        printf("byte_to_write %d\n", byte_to_write);
 
         fwrite(&byte_to_write, sizeof(uint8_t), 1, fptr);
 
@@ -139,8 +136,6 @@ uint8_t printHuffTree(t_node_t *root, FILE *fptr)
 
 t_node_t *travRead(FILE *fptr, uint16_t *buffer, int *bufbits)
 {
-    printf("buffer: %d\n", *buffer);
-    printf("bufbits: %d\n", *bufbits);
     // if buffer is empty fill it up with a new byte from the file
     if (*bufbits == 8)
     {
@@ -153,14 +148,11 @@ t_node_t *travRead(FILE *fptr, uint16_t *buffer, int *bufbits)
     // get last bit of byte
     // printf("buffer: %d\n", *buffer);
     uint8_t bit_to_read = (*buffer) >> 15;
-    printf("bit_to_read %d\n", bit_to_read);
     // printf("bit_to_read: %d\n", bit_to_read);
     if (bit_to_read == 1)
     {
-        printf("buffer2: %d\n", (*buffer >> 7) & 0XFF);
-        printf("test: %c\n", 163);
         unsigned char let = (uint8_t)((*buffer >> 7) & 0XFF);
-        printf("let: %c \n", let);
+        printf("let: %d \n", let);
         *buffer <<= (*bufbits - 8);
 
         uint8_t cache;

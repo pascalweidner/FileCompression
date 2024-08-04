@@ -23,7 +23,7 @@ ht *countCharacters(char *filepath)
     }
 
     FILE *fptr;
-    fptr = fopen(filepath, "r");
+    fptr = fopen(filepath, "rb");
     if (fptr == NULL)
     {
         perror("Error message");
@@ -33,9 +33,10 @@ ht *countCharacters(char *filepath)
     ht *table = ht_create();
 
     char buffer[100];
-    while (fgets(buffer, 100, fptr))
+    while (!feof(fptr))
     {
-        for (int i = 0; i < 100; i++)
+        int read = fread(buffer, sizeof(char), 100, fptr);
+        for (int i = 0; i < read; i++)
         {
             char *key = (char *)malloc(2 * sizeof(char));
             key[0] = buffer[i];
@@ -131,7 +132,7 @@ void compressFile(ht *encTable, char filepath[], t_node_t *root)
     strcat(fileNew, "HE.txt");
 
     FILE *fptr1;
-    fptr1 = fopen(filepath, "r");
+    fptr1 = fopen(filepath, "rb");
     if (fptr1 == NULL)
     {
         perror("Error message");
@@ -152,9 +153,11 @@ void compressFile(ht *encTable, char filepath[], t_node_t *root)
     char buffer[100];
     uint8_t buffer2 = 0;
     int bufbits = 0;
-    while (fgets(buffer, 100, fptr1))
+    while (!feof(fptr1))
     {
-        for (int i = 0; i < 100; i++)
+        int read = fread(buffer, sizeof(char), 100, fptr1);
+
+        for (int i = 0; i < read; i++)
         {
             char key[2] = {buffer[i], '\0'};
             char *code = (char *)ht_get(encTable, key);
@@ -217,7 +220,7 @@ bool huffmanEncode(char filepath[])
     destroyHList(huffList);
 
     ht *encTable = createHuffTable(root);
-    printf("%d\n", (int)ht_length(encTable));
+    printf("len: %d\n", (int)ht_length(encTable));
 
     compressFile(encTable, filepath, root);
 
@@ -232,20 +235,16 @@ void decompressFile(FILE *fptr, t_node_t *root, char filepath[])
     fileNew[strlen(filepath) - 6] = '\0';
     strcat(fileNew, "HD.txt");
 
-    FILE *destFptr = fopen(fileNew, "w");
+    FILE *destFptr = fopen(fileNew, "wb");
 
     printf("Test\n");
 
     uint8_t buffer = 0;
     int bufbits = 0;
     t_node_t *curr = root;
-    printf("root: %d\n", curr->letter);
-
-    printf("Test1\n");
 
     while (true)
     {
-        printf("Test2\n");
         if (bufbits == 0)
         {
             if (fread(&buffer, sizeof(uint8_t), 1, fptr) == 0)
@@ -254,8 +253,6 @@ void decompressFile(FILE *fptr, t_node_t *root, char filepath[])
             }
             bufbits = 8;
         }
-
-        printf("Test3\n");
         uint8_t bit_to_read = buffer >> 7;
         if (bit_to_read == 1)
         {
@@ -265,7 +262,6 @@ void decompressFile(FILE *fptr, t_node_t *root, char filepath[])
         {
             curr = curr->right;
         }
-        printf("Test4\n");
 
         buffer <<= 1;
         bufbits -= 1;
@@ -273,9 +269,8 @@ void decompressFile(FILE *fptr, t_node_t *root, char filepath[])
         // check if we reached a leaf == a letter
         if (curr->letter != -1)
         {
-            char str[2] = "\0";
-            str[0] = curr->letter;
-            fputs(str, destFptr);
+            fputc(curr->letter, destFptr);
+            curr = root;
         }
     }
 
