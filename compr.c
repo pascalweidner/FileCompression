@@ -293,11 +293,16 @@ bool huffmanDecode(char filepath[])
     }
 
     uint8_t padding;
+    printf("size: %d\n", (int)sizeof(int));
     fread(&padding, sizeof(uint8_t), 1, fptr);
+    printf("pad: %d\n", padding);
 
     // get the different paddings from the padding byte
     uint8_t paddingTree = padding >> 4;
     uint8_t paddingCompr = padding & 0xF;
+
+    // fread(&padding, sizeof(uint8_t), 1, fptr);
+    // printf("pad2: %d\n", padding);
 
     t_node_t *root = readHuffTree(fptr);
     printf("test\n");
