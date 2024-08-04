@@ -185,14 +185,13 @@ void compressFile(ht *encTable, char filepath[], t_node_t *root)
     if (bufbits != 0)
     {
         buffer2 <<= (8 - bufbits);
-        fwrite(&buffer, sizeof(uint8_t), 1, fptr2);
+        fwrite(&buffer2, sizeof(uint8_t), 1, fptr2);
     }
 
     // padding
     uint8_t paddingCompr = (uint8_t)(8 - bufbits);
 
-    printf("len1: %d\n", paddingTree);
-    printf("len2: %d \n", paddingCompr);
+    printf("padding: %d\n", paddingCompr);
 
     // write padding to file
     uint8_t padding = 0b00000000;
@@ -227,7 +226,7 @@ bool huffmanEncode(char filepath[])
     ht_destroy(encTable);
 }
 
-void decompressFile(FILE *fptr, t_node_t *root, char filepath[])
+void decompressFile(FILE *fptr, t_node_t *root, char filepath[], uint8_t padding)
 {
     char *end = strrchr(filepath, '.');
     char *fileNew = (char *)malloc((strlen(filepath) + 2) * sizeof(char));
@@ -237,21 +236,21 @@ void decompressFile(FILE *fptr, t_node_t *root, char filepath[])
 
     FILE *destFptr = fopen(fileNew, "wb");
 
-    printf("Test\n");
-
     uint8_t buffer = 0;
     int bufbits = 0;
     t_node_t *curr = root;
 
-    while (true)
+    while (!feof(fptr))
     {
         if (bufbits == 0)
         {
-            if (fread(&buffer, sizeof(uint8_t), 1, fptr) == 0)
-            {
-                break;
-            }
+            fread(&buffer, sizeof(uint8_t), 1, fptr);
             bufbits = 8;
+            if (feof(fptr))
+            {
+                bufbits = 8 - padding;
+            }
+            printf("End: %d\n", buffer);
         }
         uint8_t bit_to_read = buffer >> 7;
         if (bit_to_read == 1)
@@ -296,15 +295,16 @@ bool huffmanDecode(char filepath[])
     uint8_t paddingTree = padding >> 4;
     uint8_t paddingCompr = padding & 0xF;
 
+    printf("padding: %d\n", paddingCompr);
+
     // fread(&padding, sizeof(uint8_t), 1, fptr);
     // printf("pad2: %d\n", padding);
 
     t_node_t *root = readHuffTree(fptr);
-    printf("test\n");
 
     fseek(fptr, -1, SEEK_CUR);
 
-    decompressFile(fptr, root, filepath);
+    decompressFile(fptr, root, filepath, paddingCompr);
 
     fclose(fptr);
 }

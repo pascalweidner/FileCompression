@@ -152,7 +152,6 @@ t_node_t *travRead(FILE *fptr, uint16_t *buffer, int *bufbits)
     if (bit_to_read == 1)
     {
         unsigned char let = (uint8_t)((*buffer >> 7) & 0XFF);
-        printf("let: %d \n", let);
         *buffer <<= (*bufbits - 8);
 
         uint8_t cache;
