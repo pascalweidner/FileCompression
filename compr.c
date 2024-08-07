@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "lzw.h"
+#include "huffmanCompression.h"
 
 int main()
 {

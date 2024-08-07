@@ -7,10 +7,8 @@
 
 #include "hashTable.h"
 
-ht *resetTable(ht *tableOld)
+ht *buildTable()
 {
-    ht_destroy(tableOld);
-
     ht *table = ht_create();
     for (int i = 0; i < 128; i++)
     {
@@ -27,16 +25,46 @@ ht *resetTable(ht *tableOld)
     return table;
 }
 
-bool lzwEncode(char filename[])
+ht *resetTable(ht *tableOld)
 {
-    FILE *fptr = fopen(filename, "r");
+    ht_destroy(tableOld);
 
-    if (fptr == NULL)
+    return buildTable();
+}
+
+void writeBufferToFile(FILE *fptr, uint16_t *buffer, int *bufbits)
+{
+    while (*bufbits >= 8)
     {
-        perror("Error message");
-        exit(-errno);
+        uint8_t byte_to_write = (*buffer >> *bufbits - 8) & 0XFF;
+        fwrite(&byte_to_write, sizeof(uint8_t), 1, fptr);
+        *bufbits -= 8;
     }
+}
 
+// adds the 12 bit value in val to the buffer, so it can be written to the file as bytes
+void outputVal(uint16_t val, uint16_t *buffer, int *bufbits)
+{
+    *buffer <<= 12;
+    val &= 0XFFF;
+    *buffer |= val;
+    *bufbits += 12;
+}
+
+void output(FILE *fptr, uint16_t val, uint16_t *buffer, int *bufbits)
+{
+    writeBufferToFile(fptr, buffer, bufbits);
+    outputVal(val, buffer, bufbits);
+}
+
+void PplusC(char *cache, char *P, char *C)
+{
+    strcpy(cache, P);
+    strcat(cache, C);
+}
+
+FILE *openDestFile(char filename[])
+{
     char *fileNew = (char *)malloc((strlen(filename) * sizeof(char)));
     strcpy(fileNew, filename);
     fileNew[strlen(filename) - 4] = '\0';
@@ -49,29 +77,38 @@ bool lzwEncode(char filename[])
         exit(-errno);
     }
 
-    ht *table = ht_create();
-    for (int i = 0; i < 128; i++)
+    return destFptr;
+}
+
+bool lzwEncode(char filename[])
+{
+    FILE *fptr = fopen(filename, "r");
+
+    if (fptr == NULL)
     {
-        char *str = (char *)malloc(2 * sizeof(char));
-        str[0] = (char)i;
-        str[1] = '\0';
-
-        uint16_t *val = (uint16_t *)malloc(sizeof(uint16_t));
-        *val = (uint16_t)i;
-
-        ht_set(table, str, (void *)val);
+        perror("Error message");
+        exit(-errno);
     }
 
+    FILE *destFptr = openDestFile(filename);
+
+    // initializes the table with all the ascii characters, so 0 - 127
+    ht *table = buildTable();
+
+    // declares P and C as strings
     char *P = (char *)malloc(100 * sizeof(char));
     char *C = (char *)malloc(100 * sizeof(char));
     P[0] = '\0';
     C[0] = '\0';
 
-    uint16_t count = 128;
-
+    uint16_t codeCount = 128;
     uint16_t buffer = 0;
+    // holds the value, of how many bits are currently in the buffer and not written to file
     int bufbits = 0;
+    int ch;
+    char *cache = (char *)malloc(200 * sizeof(char));
 
+    // gets the first character
     if (!feof(fptr))
     {
         P[0] = (char)fgetc(fptr);
@@ -79,60 +116,37 @@ bool lzwEncode(char filename[])
     }
     else
     {
-        exit(-errno);
+        return true;
     }
-
-    int ch;
 
     while ((ch = fgetc(fptr)) != EOF)
     {
         C[0] = (char)ch;
         C[1] = '\0';
 
-        char *cache = (char *)malloc(200 * sizeof(char));
-        strcpy(cache, P);
-        strcat(cache, C);
+        PplusC(cache, P, C);
         if (ht_get(table, cache) != NULL)
         {
             strcat(P, C);
         }
         else
         {
-            while (bufbits >= 8)
-            {
-                uint8_t byte_to_write = (buffer >> bufbits - 8) & 0XFF;
-                fwrite(&byte_to_write, sizeof(uint8_t), 1, destFptr);
-                bufbits -= 8;
-            }
-
-            // output the code for P
-            buffer <<= 12;
-            uint16_t val = *(uint16_t *)ht_get(table, P);
-            val &= 0XFFF;
-            buffer |= val;
-            bufbits += 12;
+            // writes the buffer to the file, and adds the 12 bit value to the buffer
+            output(destFptr, *(uint16_t *)ht_get(table, P), &buffer, &bufbits);
 
             // add P+C to the string table
             uint16_t *valC = (uint16_t *)malloc(sizeof(uint16_t));
-            *valC = count;
+            *valC = codeCount;
             ht_set(table, cache, (void *)valC);
-            count++;
+            codeCount++;
 
-            // drop table, if it is full
-            if (count == 4094)
+            // drop table, if it is full and start a new one
+            // it adds a certain code to the file, so that the decompression can do so accordingly
+            if (codeCount == 4094)
             {
-                printf("drop\n");
                 table = resetTable(table);
-                while (bufbits >= 8)
-                {
-                    uint8_t byte_to_write = (buffer >> bufbits - 8) & 0XFF;
-                    fwrite(&byte_to_write, sizeof(uint8_t), 1, destFptr);
-                    bufbits -= 8;
-                }
-                buffer <<= 12;
-                uint16_t val = 0XFFF;
-                buffer |= val;
-                bufbits += 12;
+                writeBufferToFile(destFptr, &buffer, &bufbits);
+                outputVal(0XFFF, &buffer, &bufbits);
             }
 
             // P = C
@@ -141,30 +155,16 @@ bool lzwEncode(char filename[])
     }
 
     // output P
-    while (bufbits >= 8)
-    {
-        uint8_t byte_to_write = (buffer >> bufbits - 8) & 0XFF;
-        fwrite(&byte_to_write, sizeof(uint8_t), 1, destFptr);
-        bufbits -= 8;
-    }
+    output(destFptr, *(uint16_t *)ht_get(table, P), &buffer, &bufbits);
 
-    buffer <<= 12;
-    uint16_t val = *(uint16_t *)ht_get(table, P);
-    val &= 0XFFF;
-    buffer |= val;
-    bufbits += 12;
-
-    while (bufbits >= 8)
-    {
-        uint8_t byte_to_write = (buffer >> bufbits - 8) & 0XFF;
-        fwrite(&byte_to_write, sizeof(uint8_t), 1, destFptr);
-        bufbits -= 8;
-    }
+    // clear buffer
+    writeBufferToFile(destFptr, &buffer, &bufbits);
 
     printf("bufbist: %d\n", bufbits);
 
     free(P);
     free(C);
+    free(cache);
     ht_destroy(table);
     fclose(fptr);
     fclose(destFptr);
