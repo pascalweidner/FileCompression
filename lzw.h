@@ -4,6 +4,6 @@
 #include <stdbool.h>
 
 bool lzwEncode(char filename[]);
-bool lzwDecode(char filename[]);
+// bool lzwDecode(char filename[]);
 
 #endif

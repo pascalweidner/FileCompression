@@ -4,6 +4,9 @@
         "stdlib.h": "c",
         "huffmantree.h": "c",
         "hashtable.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "huffmancompression.h": "c",
+        "errno.h": "c",
+        "stdbool.h": "c"
     }
 }
