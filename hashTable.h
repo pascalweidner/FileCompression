@@ -19,11 +19,22 @@ void ht_destroy(ht *table);
 // value (which was set with ht_set), or NULL if key not found.
 void *ht_get(ht *table, const char *key);
 
+// Get item with given generic key (can be anydata type)
+// Needs the size of the key in bytes = key_len
+// Return value (which was set with ht_set), or NULL if key not found.
+void *ht_get_gen(ht *table, const void *key, size_t key_len);
+
 // Set item with given key (NUL-terminated) to value (which must not
 // be NULL). If not already present in table, key is copied to newly
 // allocated memory (keys are freed automatically when ht_destroy is
 // called). Return address of copied key, or NULL if out of memory.
 const char *ht_set(ht *table, const char *key, void *value);
+
+// Set item with given generic key (NUL-terminated) and given byte len for the key to value (which must not
+// be NULL). If not already present in table, key is copied to newly
+// allocated memory (keys are freed automatically when ht_destroy is
+// called). Return address of copied key, or NULL if out of memory.
+const void *ht_set_gen(ht *table, const void *key, size_t key_len, void *value);
 
 // Return number of items in hash table.
 size_t ht_length(ht *table);
@@ -31,7 +42,7 @@ size_t ht_length(ht *table);
 // Hash table iterator: create with ht_iterator, iterate with ht_next.
 typedef struct
 {
-    const char *key; // current key
+    const void *key; // current key
     void *value;     // current value
 
     // Don't use these fields directly.

@@ -79,7 +79,7 @@ h_list *createHuffList(ht *table)
 
     while (ht_next(&it) != false)
     {
-        t_node_t *new = create_t_node(it.key[0], *(int *)it.value);
+        t_node_t *new = create_t_node(((char *)(it.key))[0], *(int *)it.value);
         array[i] = new;
         i++;
     }
