@@ -7,7 +7,7 @@
 
 #include "hashTable.h"
 
-ht *buildTable()
+ht *buildEncTable()
 {
     ht *table = ht_create();
     for (int i = 0; i < 128; i++)
@@ -25,11 +25,36 @@ ht *buildTable()
     return table;
 }
 
-ht *resetTable(ht *tableOld)
+ht *buildDecTable()
+{
+    ht *table = ht_create();
+    for (int i = 0; i < 128; i++)
+    {
+        uint16_t *key = (uint16_t *)malloc(sizeof(uint16_t));
+        *key = (uint16_t)i;
+
+        char *val = (char *)malloc(2 * sizeof(char));
+        val[0] = (char)i;
+        val[1] = '\0';
+
+        ht_set_gen(table, (void *)key, sizeof(uint16_t), (void *)val);
+    }
+
+    return table;
+}
+
+ht *resetEncTable(ht *tableOld)
 {
     ht_destroy(tableOld);
 
-    return buildTable();
+    return buildEncTable();
+}
+
+ht *resetDecTable(ht *tableOld)
+{
+    ht_destroy(tableOld);
+
+    return buildDecTable();
 }
 
 void writeBufferToFile(FILE *fptr, uint16_t *buffer, int *bufbits)
@@ -63,12 +88,12 @@ void PplusC(char *cache, char *P, char *C)
     strcat(cache, C);
 }
 
-FILE *openDestFile(char filename[])
+FILE *openDestFile(char filename[], char end[])
 {
     char *fileNew = (char *)malloc((strlen(filename) * sizeof(char)));
     strcpy(fileNew, filename);
     fileNew[strlen(filename) - 4] = '\0';
-    strcat(fileNew, ".lzw");
+    strcat(fileNew, end);
 
     FILE *destFptr = fopen(fileNew, "wb");
     if (destFptr == NULL)
@@ -90,10 +115,10 @@ bool lzwEncode(char filename[])
         exit(-errno);
     }
 
-    FILE *destFptr = openDestFile(filename);
+    FILE *destFptr = openDestFile(filename, ".lzw");
 
     // initializes the table with all the ascii characters, so 0 - 127
-    ht *table = buildTable();
+    ht *table = buildEncTable();
 
     // declares P and C as strings
     char *P = (char *)malloc(100 * sizeof(char));
@@ -106,7 +131,6 @@ bool lzwEncode(char filename[])
     // holds the value, of how many bits are currently in the buffer and not written to file
     int bufbits = 0;
     int ch;
-    char *cache = (char *)malloc(200 * sizeof(char));
 
     // gets the first character
     if (!feof(fptr))
@@ -124,6 +148,7 @@ bool lzwEncode(char filename[])
         C[0] = (char)ch;
         C[1] = '\0';
 
+        char *cache = (char *)malloc(200 * sizeof(char));
         PplusC(cache, P, C);
         if (ht_get(table, cache) != NULL)
         {
@@ -144,7 +169,7 @@ bool lzwEncode(char filename[])
             // it adds a certain code to the file, so that the decompression can do so accordingly
             if (codeCount == 4094)
             {
-                table = resetTable(table);
+                table = resetEncTable(table);
                 writeBufferToFile(destFptr, &buffer, &bufbits);
                 outputVal(0XFFF, &buffer, &bufbits);
             }
@@ -160,12 +185,105 @@ bool lzwEncode(char filename[])
     // clear buffer
     writeBufferToFile(destFptr, &buffer, &bufbits);
 
+    // TODO: add padding
     printf("bufbist: %d\n", bufbits);
 
     free(P);
     free(C);
-    free(cache);
     ht_destroy(table);
     fclose(fptr);
     fclose(destFptr);
+
+    return true;
+}
+
+void readFromBuffer(uint16_t *buffer, int *bufbits, uint16_t *dest)
+{
+    if (bufbits < 12)
+    {
+        printf("Error: not enough bits");
+        exit(-1);
+    }
+
+    *dest = (*buffer >> *bufbits - 12) & 0XFFF;
+    *bufbits -= 12;
+}
+
+void readToBuffer(FILE *fptr, uint16_t *buffer, int *bufbits)
+{
+    while (*bufbits <= 8 && !feof(fptr))
+    {
+        uint8_t cache;
+        fread(&cache, sizeof(uint8_t), 1, fptr);
+        *buffer <<= 8;
+        *buffer |= cache;
+        *bufbits += 8;
+    }
+}
+
+void input(FILE *fptr, uint16_t *buffer, int *bufbits, uint16_t *dest)
+{
+    readToBuffer(fptr, buffer, bufbits);
+    readFromBuffer(buffer, bufbits, dest);
+}
+
+bool lzwDecode(char filename[])
+{
+    FILE *fptr = fopen(filename, "rb");
+
+    if (fptr == NULL)
+    {
+        perror("Error message");
+        exit(-errno);
+    }
+
+    FILE *destFptr = openDestFile(filename, ".txt");
+
+    // initialize table with single character strings
+    ht *table = buildDecTable();
+
+    uint16_t OLD;
+    uint16_t NEW;
+
+    char *S = (char *)malloc(100 * sizeof(char));
+    char *C = (char *)malloc(100 * sizeof(char));
+    S[0] = '\0';
+    C[0] = '\0';
+
+    uint16_t codeCount = 128;
+    uint16_t buffer = 0;
+    int bufbits = 0;
+
+    if (!feof(fptr))
+    {
+        input(fptr, &buffer, &bufbits, &OLD);
+    }
+    else
+    {
+        return true;
+    }
+    while (!feof(fptr))
+    {
+        input(fptr, &buffer, &bufbits, &NEW);
+        if (ht_get_gen(table, &NEW, sizeof(uint16_t)) == NULL)
+        {
+            S = (char *)ht_get_gen(table, &OLD, sizeof(uint16_t));
+            strcat(S, C);
+        }
+        else
+        {
+            S = (char *)ht_get_gen(table, &NEW, sizeof(uint16_t));
+        }
+        fputs(S, destFptr);
+        C[0] = S[0];
+        C[1] = '\0';
+
+        char *cache = (char *)malloc(200 * sizeof(char));
+        cache = (char *)ht_get_gen(table, &OLD, sizeof(uint16_t));
+        strcat(cache, C);
+        uint16_t *key = (uint16_t *)malloc(sizeof(uint16_t));
+        *key = codeCount;
+        ht_set_gen(table, (void *)key, sizeof(uint16_t), cache);
+        OLD = NEW;
+    }
 }
