@@ -117,6 +117,10 @@ bool lzwEncode(char filename[])
 
     FILE *destFptr = openDestFile(filename, ".lzw");
 
+    // add placeholder for padding
+    uint8_t puffer = 0b00000000;
+    fwrite(&puffer, sizeof(uint8_t), 1, destFptr);
+
     // initializes the table with all the ascii characters, so 0 - 127
     ht *table = buildEncTable();
 
@@ -161,10 +165,11 @@ bool lzwEncode(char filename[])
 
             // drop table, if it is full and start a new one
             // it adds a certain code to the file, so that the decompression can do so accordingly
-            if (codeCount == 4094)
+            if (codeCount == 4095)
             {
                 table = resetEncTable(table);
                 codeCount = 128;
+                printf("drop\n");
                 writeBufferToFile(destFptr, &buffer, &bufbits);
                 outputVal(0XFFF, &buffer, &bufbits);
             }
@@ -183,11 +188,24 @@ bool lzwEncode(char filename[])
     // output P
     output(destFptr, *(uint16_t *)ht_get(table, P), &buffer, &bufbits);
 
+    printf("bufbits: %d\n", bufbits);
+
     // clear buffer
     writeBufferToFile(destFptr, &buffer, &bufbits);
+    if (bufbits != 0)
+    {
+        uint8_t padding = 8 - bufbits;
+        // add padding bits
+        buffer <<= padding;
+        bufbits += padding;
+        printf("buf: %d\n", bufbits);
+        writeBufferToFile(destFptr, &buffer, &bufbits);
 
-    // TODO: add padding
-    printf("bufbist: %d\n", bufbits);
+        fseek(destFptr, 0, SEEK_SET);
+        fwrite(&padding, sizeof(uint8_t), 1, destFptr);
+    }
+
+    printf("bufbits: %d\n", bufbits);
 
     free(P);
     free(C);
@@ -202,7 +220,7 @@ void readFromBuffer(uint16_t *buffer, int *bufbits, uint16_t *dest)
 {
     if (*bufbits < 12)
     {
-        printf("Error: not enough bits");
+        printf("Error: not enough bits %d\n", *bufbits);
         exit(-1);
     }
 
@@ -219,6 +237,11 @@ void readToBuffer(FILE *fptr, uint16_t *buffer, int *bufbits)
         *buffer <<= 8;
         *buffer |= cache;
         *bufbits += 8;
+    }
+
+    if (feof(fptr))
+    {
+        printf("buf: %d\n", *bufbits);
     }
 }
 
@@ -240,6 +263,11 @@ bool lzwDecode(char filename[])
 
     FILE *destFptr = openDestFile(filename, ".txt");
 
+    // get padding
+    uint8_t padding;
+    fread(&padding, sizeof(uint8_t), 1, fptr);
+    printf("pad: %d\n", padding);
+
     // initialize table with single character strings
     ht *table = buildDecTable();
 
@@ -260,23 +288,23 @@ bool lzwDecode(char filename[])
     if (!feof(fptr))
     {
         input(fptr, &buffer, &bufbits, &OLD);
+        printf("bufbits: %d\n", bufbits);
     }
     else
     {
         return true;
     }
 
+    fputs((char *)ht_get_gen(table, &OLD, sizeof(uint16_t)), destFptr);
+
     while (!feof(fptr))
     {
         input(fptr, &buffer, &bufbits, &NEW);
-
-        printf("codeCount: %d\n", codeCount);
         if (NEW == 4095)
         {
             strcpy(OLDcache, (char *)ht_get_gen(table, &OLD, sizeof(uint16_t)));
             table = resetDecTable(table);
             codeCount = 128;
-            printf("Test %d\n", 5);
             continue;
         }
 
@@ -288,13 +316,10 @@ bool lzwDecode(char filename[])
         else
         {
             S = (char *)ht_get_gen(table, &NEW, sizeof(uint16_t));
-            printf("else %s\n", S);
         }
         fputs(S, destFptr);
         C[0] = S[0];
         C[1] = '\0';
-
-        printf("old: %d\n", OLD);
 
         char *cache = (char *)malloc(200 * sizeof(char));
         char *trans = (char *)ht_get_gen(table, &OLD, sizeof(uint16_t));
