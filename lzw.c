@@ -159,20 +159,21 @@ bool lzwEncode(char filename[])
             // writes the buffer to the file, and adds the 12 bit value to the buffer
             output(destFptr, *(uint16_t *)ht_get(table, P), &buffer, &bufbits);
 
-            // add P+C to the string table
-            uint16_t *valC = (uint16_t *)malloc(sizeof(uint16_t));
-            *valC = codeCount;
-            ht_set(table, cache, (void *)valC);
-            codeCount++;
-
             // drop table, if it is full and start a new one
             // it adds a certain code to the file, so that the decompression can do so accordingly
             if (codeCount == 4094)
             {
                 table = resetEncTable(table);
+                codeCount = 128;
                 writeBufferToFile(destFptr, &buffer, &bufbits);
                 outputVal(0XFFF, &buffer, &bufbits);
             }
+
+            // add P+C to the string table
+            uint16_t *valC = (uint16_t *)malloc(sizeof(uint16_t));
+            *valC = codeCount;
+            ht_set(table, cache, (void *)valC);
+            codeCount++;
 
             // P = C
             strcpy(P, C);
@@ -199,7 +200,7 @@ bool lzwEncode(char filename[])
 
 void readFromBuffer(uint16_t *buffer, int *bufbits, uint16_t *dest)
 {
-    if (bufbits < 12)
+    if (*bufbits < 12)
     {
         printf("Error: not enough bits");
         exit(-1);
@@ -245,6 +246,8 @@ bool lzwDecode(char filename[])
     uint16_t OLD;
     uint16_t NEW;
 
+    char OLDcache[100];
+
     char *S = (char *)malloc(100 * sizeof(char));
     char *C = (char *)malloc(100 * sizeof(char));
     S[0] = '\0';
@@ -262,9 +265,21 @@ bool lzwDecode(char filename[])
     {
         return true;
     }
+
     while (!feof(fptr))
     {
         input(fptr, &buffer, &bufbits, &NEW);
+
+        printf("codeCount: %d\n", codeCount);
+        if (NEW == 4095)
+        {
+            strcpy(OLDcache, (char *)ht_get_gen(table, &OLD, sizeof(uint16_t)));
+            table = resetDecTable(table);
+            codeCount = 128;
+            printf("Test %d\n", 5);
+            continue;
+        }
+
         if (ht_get_gen(table, &NEW, sizeof(uint16_t)) == NULL)
         {
             S = (char *)ht_get_gen(table, &OLD, sizeof(uint16_t));
@@ -273,17 +288,29 @@ bool lzwDecode(char filename[])
         else
         {
             S = (char *)ht_get_gen(table, &NEW, sizeof(uint16_t));
+            printf("else %s\n", S);
         }
         fputs(S, destFptr);
         C[0] = S[0];
         C[1] = '\0';
 
+        printf("old: %d\n", OLD);
+
         char *cache = (char *)malloc(200 * sizeof(char));
-        cache = (char *)ht_get_gen(table, &OLD, sizeof(uint16_t));
+        char *trans = (char *)ht_get_gen(table, &OLD, sizeof(uint16_t));
+        if (trans == NULL)
+        {
+            strcpy(cache, OLDcache);
+        }
+        else
+        {
+            strcpy(cache, trans);
+        }
         strcat(cache, C);
         uint16_t *key = (uint16_t *)malloc(sizeof(uint16_t));
         *key = codeCount;
         ht_set_gen(table, (void *)key, sizeof(uint16_t), cache);
+        codeCount++;
         OLD = NEW;
     }
 }
