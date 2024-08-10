@@ -187,6 +187,8 @@ bool lzwEncode(char filename[])
     // clear buffer
     writeBufferToFile(destFptr, &buffer, &bufbits);
 
+    printf("bufbits %d\n", bufbits);
+
     if (bufbits != 0)
     {
         uint8_t padding = 8 - bufbits;
