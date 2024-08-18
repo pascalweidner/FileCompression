@@ -102,6 +102,8 @@ FILE *openDestFile(char filename[], char end[], char mode[])
         exit(-errno);
     }
 
+    free(fileNew);
+
     return destFptr;
 }
 
