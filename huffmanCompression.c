@@ -12,7 +12,7 @@
 bool checkIfTxt(char *filepath)
 {
     char *ending = strrchr(filepath, '.');
-    return strcmp(ending, ".txt") == 0;
+    return strcmp(ending, ".txt") == 0 || strcmp(ending, ".lzw") == 0;
 }
 
 ht *countCharacters(char *filepath)
@@ -129,7 +129,8 @@ void compressFile(ht *encTable, char filepath[], t_node_t *root)
     char *fileNew = (char *)malloc((strlen(filepath) + 2) * sizeof(char));
     strcpy(fileNew, filepath);
     fileNew[strlen(filepath) - 4] = '\0';
-    strcat(fileNew, "HE.txt");
+    strcat(fileNew, "HE");
+    strcat(fileNew, end);
 
     FILE *fptr1;
     fptr1 = fopen(filepath, "rb");
